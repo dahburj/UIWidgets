@@ -26,6 +26,14 @@ namespace Unity.UIWidgets.ui {
             get { return this.bottom - this.top; }
         }
 
+        public float area {
+            get { return this.width * this.height; }
+        }
+
+        public float margin {
+            get { return this.width + this.height; }
+        }
+
         public uiOffset topLeft {
             get { return new uiOffset(this.left, this.top); }
         }
@@ -95,7 +103,10 @@ namespace Unity.UIWidgets.ui {
     }
 
     public static class uiRectHelper {
-        public static uiRect fromRect(Rect rect) {
+        public static uiRect? fromRect(Rect rect) {
+            if (rect == null) {
+                return null;
+            }
             return new uiRect(rect.left, rect.top, rect.right, rect.bottom);
         }
 

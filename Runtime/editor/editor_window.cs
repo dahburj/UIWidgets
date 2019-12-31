@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Unity.UIWidgets.async;
+using Unity.UIWidgets.engine;
 using Unity.UIWidgets.foundation;
 using Unity.UIWidgets.rendering;
 using Unity.UIWidgets.scheduler;
@@ -14,10 +15,33 @@ namespace Unity.UIWidgets.editor {
 #if UNITY_EDITOR
     public abstract class UIWidgetsEditorWindow : EditorWindow, WindowHost {
         WindowAdapter _windowAdapter;
+        
+        static readonly List<UIWidgetsEditorWindow> _activeEditorWindows = new List<UIWidgetsEditorWindow>();
 
+        [InitializeOnLoadMethod]
+        static void _OnBaseEditorWindowLoaded()
+        {
+            EditorApplication.quitting += () =>
+            {
+                foreach (var editorWindow in _activeEditorWindows) {
+                    editorWindow.OnDisable();
+                }
+                
+                _activeEditorWindows.Clear();
+            };
+        }
+        
         public UIWidgetsEditorWindow() {
             this.wantsMouseMove = true;
             this.wantsMouseEnterLeaveWindow = true;
+            
+            _activeEditorWindows.Add(this);
+        }
+        
+        void OnDestroy() {
+            if (_activeEditorWindows.Contains(this)) {
+                _activeEditorWindows.Remove(this);
+            }
         }
 
         protected virtual void OnEnable() {
@@ -91,7 +115,7 @@ namespace Unity.UIWidgets.editor {
         protected override float queryDevicePixelRatio() {
             return EditorGUIUtility.pixelsPerPoint;
         }
-
+        
         protected override int queryAntiAliasing() {
             return defaultAntiAliasing;
         }
@@ -275,7 +299,7 @@ namespace Unity.UIWidgets.editor {
             if (this._devicePixelRatio != this.queryDevicePixelRatio()) {
                 return true;
             }
-
+            
             if (this._antiAliasing != this.queryAntiAliasing()) {
                 return true;
             }
@@ -363,7 +387,7 @@ namespace Unity.UIWidgets.editor {
                         timeStamp: Timer.timespanSinceStartup,
                         change: PointerChange.down,
                         kind: PointerDeviceKind.mouse,
-                        device: evt.button,
+                        device: InputUtils.getMouseButtonKey(evt.button),
                         physicalX: evt.mousePosition.x * this._devicePixelRatio,
                         physicalY: evt.mousePosition.y * this._devicePixelRatio
                     );
@@ -373,7 +397,7 @@ namespace Unity.UIWidgets.editor {
                         timeStamp: Timer.timespanSinceStartup,
                         change: PointerChange.up,
                         kind: PointerDeviceKind.mouse,
-                        device: evt.button,
+                        device: InputUtils.getMouseButtonKey(evt.button),
                         physicalX: evt.mousePosition.x * this._devicePixelRatio,
                         physicalY: evt.mousePosition.y * this._devicePixelRatio
                     );
@@ -383,7 +407,7 @@ namespace Unity.UIWidgets.editor {
                         timeStamp: Timer.timespanSinceStartup,
                         change: PointerChange.move,
                         kind: PointerDeviceKind.mouse,
-                        device: evt.button,
+                        device: InputUtils.getMouseButtonKey(evt.button),
                         physicalX: evt.mousePosition.x * this._devicePixelRatio,
                         physicalY: evt.mousePosition.y * this._devicePixelRatio
                     );
@@ -393,7 +417,7 @@ namespace Unity.UIWidgets.editor {
                         timeStamp: Timer.timespanSinceStartup,
                         change: PointerChange.hover,
                         kind: PointerDeviceKind.mouse,
-                        device: evt.button,
+                        device: InputUtils.getMouseButtonKey(evt.button),
                         physicalX: evt.mousePosition.x * this._devicePixelRatio,
                         physicalY: evt.mousePosition.y * this._devicePixelRatio
                     );
@@ -403,7 +427,7 @@ namespace Unity.UIWidgets.editor {
                         -evt.delta.y * this._devicePixelRatio,
                         evt.mousePosition.x * this._devicePixelRatio,
                         evt.mousePosition.y * this._devicePixelRatio,
-                        evt.button
+                        InputUtils.getScrollButtonKey()
                     );
                 }
                 else if (evt.type == EventType.DragUpdated) {
@@ -411,7 +435,7 @@ namespace Unity.UIWidgets.editor {
                         timeStamp: Timer.timespanSinceStartup,
                         change: PointerChange.dragFromEditorMove,
                         kind: PointerDeviceKind.mouse,
-                        device: evt.button,
+                        device: InputUtils.getMouseButtonKey(evt.button),
                         physicalX: evt.mousePosition.x * this._devicePixelRatio,
                         physicalY: evt.mousePosition.y * this._devicePixelRatio
                     );
@@ -421,7 +445,7 @@ namespace Unity.UIWidgets.editor {
                         timeStamp: Timer.timespanSinceStartup,
                         change: PointerChange.dragFromEditorRelease,
                         kind: PointerDeviceKind.mouse,
-                        device: evt.button,
+                        device: InputUtils.getMouseButtonKey(evt.button),
                         physicalX: evt.mousePosition.x * this._devicePixelRatio,
                         physicalY: evt.mousePosition.y * this._devicePixelRatio
                     );

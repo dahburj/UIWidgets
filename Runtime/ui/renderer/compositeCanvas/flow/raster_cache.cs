@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.UIWidgets.editor;
 using Unity.UIWidgets.foundation;
 using Unity.UIWidgets.ui;
 using UnityEngine;
@@ -24,14 +25,19 @@ namespace Unity.UIWidgets.flow {
         public readonly float devicePixelRatio;
 
         public void draw(Canvas canvas) {
-            var bounds = canvas.getTotalMatrix().mapRect(this.logicalRect).roundOut(this.devicePixelRatio);
+            var boundRect = canvas.getTotalMatrix().mapRect(this.logicalRect);
+            var bounds = boundRect.withDevicePixelRatio(this.devicePixelRatio);
 
             D.assert(() => {
-                var textureWidth = Mathf.CeilToInt(bounds.width * this.devicePixelRatio);
-                var textureHeight = Mathf.CeilToInt(bounds.height * this.devicePixelRatio);
-
-                D.assert(this.image.width == textureWidth);
-                D.assert(this.image.height == textureHeight);
+                var boundsInPixel = boundRect.roundOutScale(this.devicePixelRatio);
+                var textureWidth = Mathf.CeilToInt(boundsInPixel.width);
+                var textureHeight = Mathf.CeilToInt(boundsInPixel.height);
+                
+                //it is possible that there is a minor difference between the bound size and the image size (1 pixel at
+                //most) due to the roundOut operation when calculating the bounds if the elements in the canvas transform
+                //is not all integer
+                D.assert(Mathf.Abs(this.image.width - textureWidth) <= 1);
+                D.assert(Mathf.Abs(this.image.height - textureHeight) <= 1);
                 return true;
             });
 
@@ -53,16 +59,20 @@ namespace Unity.UIWidgets.flow {
             this.picture = picture;
             this.matrix = new Matrix3(matrix);
 
-            D.assert(() => {
-                var x = this.matrix[2] * devicePixelRatio;
-                var y = this.matrix[5] * devicePixelRatio;
-                this.matrix[2] = (x - (int) x) / devicePixelRatio; // x
-                this.matrix[5] = (y - (int) y) / devicePixelRatio; // y
-
-                D.assert(Mathf.Abs(this.matrix[2]) <= 1e-5);
-                D.assert(Mathf.Abs(this.matrix[5]) <= 1e-5);
-                return true;
-            });
+            //This Assertion ensures that the transform of the given view matrix, i.e., dx, dy must be both integers in Skia.
+            //We disable it because in our PictureLayer.PreRoll and Paint function, we use alignToPixel() to align the view matrix
+            //before creating RasterCache which cannot meet this constraint due to the involved devicePixelRatio.
+            //Enable it when we find a way to fix this alignment issue
+//            D.assert(() => {
+//                var x = this.matrix[2] * devicePixelRatio;
+//                var y = this.matrix[5] * devicePixelRatio;
+//                this.matrix[2] = (x - (int) x) / devicePixelRatio; // x
+//                this.matrix[5] = (y - (int) y) / devicePixelRatio; // y
+//
+//                D.assert(Mathf.Abs(this.matrix[2]) <= 1e-5);
+//                D.assert(Mathf.Abs(this.matrix[5]) <= 1e-5);
+//                return true;
+//            });
 
             this.matrix[2] = 0.0f;
             this.matrix[5] = 0.0f;
@@ -75,7 +85,7 @@ namespace Unity.UIWidgets.flow {
         public readonly Matrix3 matrix;
 
         public readonly float devicePixelRatio;
-
+        
         public readonly int antiAliasing;
 
         public bool Equals(_RasterCacheKey other) {
@@ -207,6 +217,10 @@ namespace Unity.UIWidgets.flow {
                 return false;
             }
 
+            if (Window.instance.windowConfig.disableRasterCache) {
+                return false;
+            }
+            
             var bounds = picture.paintBounds;
             if (bounds.isEmpty) {
                 return false;
@@ -220,21 +234,29 @@ namespace Unity.UIWidgets.flow {
                 return false;
             }
 
+            //https://forum.unity.com/threads/rendertexture-create-failed-rendertexture-too-big.58667/
+            if (picture.paintBounds.size.width > WindowConfig.MaxRasterImageSize ||
+                picture.paintBounds.size.height > WindowConfig.MaxRasterImageSize) {
+                return false;
+            }
+
             return true;
         }
 
         RasterCacheResult _rasterizePicture(Picture picture, Matrix3 transform, float devicePixelRatio,
             int antiAliasing, MeshPool meshPool) {
-            var bounds = transform.mapRect(picture.paintBounds).roundOut(devicePixelRatio);
+            var boundRect = transform.mapRect(picture.paintBounds);
+            var bounds = boundRect.withDevicePixelRatio(devicePixelRatio);
+            var boundsInPixel = boundRect.roundOutScale(devicePixelRatio);
 
             var desc = new RenderTextureDescriptor(
-                Mathf.CeilToInt((bounds.width * devicePixelRatio)),
-                Mathf.CeilToInt((bounds.height * devicePixelRatio)),
+                Mathf.CeilToInt(boundsInPixel.width),
+                Mathf.CeilToInt(boundsInPixel.height),
                 RenderTextureFormat.Default, 24) {
                 useMipMap = false,
                 autoGenerateMips = false,
             };
-
+            
             if (antiAliasing != 0) {
                 desc.msaaSamples = antiAliasing;
             }

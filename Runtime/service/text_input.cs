@@ -345,6 +345,9 @@ namespace Unity.UIWidgets.service {
             D.assert(!string.IsNullOrEmpty(composeText));
             var composeStart = this.composing == TextRange.empty ? this.selection.start : this.composing.start;
             var lastComposeEnd = this.composing == TextRange.empty ? this.selection.end : this.composing.end;
+            
+            composeStart = Mathf.Clamp(composeStart, 0, this.text.Length);
+            lastComposeEnd = Mathf.Clamp(lastComposeEnd, 0, this.text.Length);
             var newText = this.text.Substring(0, composeStart) + composeText + this.text.Substring(lastComposeEnd);
             var componseEnd = composeStart + composeText.Length;
             return new TextEditingValue(
@@ -439,11 +442,13 @@ namespace Unity.UIWidgets.service {
     }
 
     public interface TextInputClient {
-        void updateEditingValue(TextEditingValue value);
+        void updateEditingValue(TextEditingValue value, bool isIMEInput);
 
         void performAction(TextInputAction action);
 
         void updateFloatingCursor(RawFloatingCursorPoint point);
+
+        RawInputKeyResponse globalInputKeyHandler(RawKeyEvent evt);
     }
 
     public enum TextInputAction {
@@ -608,7 +613,7 @@ namespace Unity.UIWidgets.service {
             }
         }
 
-        internal static void _updateEditingState(int client, TextEditingValue value) {
+        internal static void _updateEditingState(int client, TextEditingValue value, bool isIMEInput = false) {
             if (_currentConnection == null) {
                 return;
             }
@@ -617,7 +622,7 @@ namespace Unity.UIWidgets.service {
                 return;
             }
 
-            _currentConnection._client.updateEditingValue(value);
+            _currentConnection._client.updateEditingValue(value, isIMEInput); 
         }
 
         internal static void _performAction(int client, TextInputAction action) {
@@ -630,6 +635,18 @@ namespace Unity.UIWidgets.service {
             }
 
             _currentConnection._client.performAction(action);
+        }
+
+        internal static RawInputKeyResponse _handleGlobalInputKey(int client, RawKeyEvent evt) {
+            if (_currentConnection == null) {
+                return RawInputKeyResponse.convert(evt);
+            }
+
+            if (client != _currentConnection._id) {
+                return RawInputKeyResponse.convert(evt);
+            }
+
+            return _currentConnection._client.globalInputKeyHandler(evt);
         }
 
         static bool _hidePending = false;

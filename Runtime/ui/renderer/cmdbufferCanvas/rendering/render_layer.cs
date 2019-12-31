@@ -39,7 +39,8 @@ namespace Unity.UIWidgets.ui {
 
             public static RenderLayer create(int rtID = 0, int width = 0, int height = 0,
                 FilterMode filterMode = FilterMode.Bilinear,
-                bool noMSAA = false, uiRect? layerBounds = null, uiPaint? layerPaint = null, bool ignoreClip = true) {
+                bool noMSAA = false, 
+                uiRect? layerBounds = null, uiPaint? layerPaint = null, bool ignoreClip = true) {
                 D.assert(layerBounds != null);
                 var newLayer = ObjectPool<RenderLayer>.alloc();
                 newLayer.rtID = rtID;

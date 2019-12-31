@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using Unity.UIWidgets.async;
+using Unity.UIWidgets.editor;
 using Unity.UIWidgets.foundation;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Unity.UIWidgets.ui {
     public delegate void VoidCallback();
@@ -133,7 +135,7 @@ namespace Unity.UIWidgets.ui {
         }
 
         internal static Window _instance;
-
+        
         public const int defaultAntiAliasing = 4;
 
         public float devicePixelRatio {
@@ -141,7 +143,7 @@ namespace Unity.UIWidgets.ui {
         }
 
         protected float _devicePixelRatio = 1.0f;
-
+        
         public int antiAliasing {
             get { return this._antiAliasing; }
         }
@@ -151,6 +153,8 @@ namespace Unity.UIWidgets.ui {
         public Size physicalSize {
             get { return this._physicalSize; }
         }
+
+        public WindowConfig windowConfig = WindowConfig.defaultConfig;
 
         protected Size _physicalSize = Size.zero;
 
@@ -209,6 +213,13 @@ namespace Unity.UIWidgets.ui {
 
         VoidCallback _onTextScaleFactorChanged;
 
+        public VoidCallback onPlatformBrightnessChanged {
+            get { return this._onPlatformBrightnessChanged; }
+            set { this._onPlatformBrightnessChanged = value; }
+        }
+
+        VoidCallback _onPlatformBrightnessChanged;
+
         public FrameCallback onBeginFrame {
             get { return this._onBeginFrame; }
             set { this._onBeginFrame = value; }
@@ -265,6 +276,8 @@ namespace Unity.UIWidgets.ui {
 
         public const int defaultMaxTargetFrameRate = 60;
         public const int defaultMinTargetFrameRate = 25;
+        public const int defaultMaxRenderFrameInterval = 100;
+        public const int defaultMinRenderFrameInterval = 1;
 
         static Action _onFrameRateSpeedUp = defaultFrameRateSpeedUp;
 
@@ -281,7 +294,11 @@ namespace Unity.UIWidgets.ui {
         }
 
         static void defaultFrameRateSpeedUp() {
+#if UNITY_2019_3_OR_NEWER
+            OnDemandRendering.renderFrameInterval = defaultMinRenderFrameInterval;
+#else
             Application.targetFrameRate = defaultMaxTargetFrameRate;
+#endif
         }
 
         static Action _onFrameRateCoolDown = defaultFrameRateCoolDown;
@@ -299,7 +316,11 @@ namespace Unity.UIWidgets.ui {
         }
 
         static void defaultFrameRateCoolDown() {
+#if UNITY_2019_3_OR_NEWER
+            OnDemandRendering.renderFrameInterval = defaultMaxRenderFrameInterval;
+#else
             Application.targetFrameRate = defaultMinTargetFrameRate;
+#endif
         }
     }
 }
